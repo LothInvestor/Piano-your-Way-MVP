@@ -7,18 +7,19 @@
   --bg:#0e0e1a;--surface:#19192d;--card:#23233c;
   --accent:#7b68ee;--ok:#1ec995;--err:#e85151;
   --text:#ece9f9;--muted:#6f6d88;--border:#2d2d4a;
-  --staff-bg:#f8f4ea;--note-c:#c73b2c;
+  --staff-bg:#1e1b2e;--staff-line:#a89880;--note-col:#e85151;
   color-scheme:dark;
 }
 @media(prefers-color-scheme:light){
   :root:not([data-theme="dark"]){
-    --bg:#f0edf8;--surface:#fff;--card:#f0edf8;
-    --text:#1a1730;--muted:#6b6885;--border:#dbd8ec;
+    --bg:#9AD7FF;--surface:#fff;--card:#e8f5ff;
+    --text:#1a1730;--muted:#4a6a88;--border:#bde0f8;
+    --staff-bg:#FAFBFF;--staff-line:#5c4033;--note-col:#c73b2c;
     color-scheme:light;
   }
 }
-:root[data-theme="light"]{--bg:#f0edf8;--surface:#fff;--card:#f0edf8;--text:#1a1730;--muted:#6b6885;--border:#dbd8ec;color-scheme:light;}
-:root[data-theme="dark"]{color-scheme:dark;}
+:root[data-theme="light"]{--bg:#9AD7FF;--surface:#fff;--card:#e8f5ff;--text:#1a1730;--muted:#4a6a88;--border:#bde0f8;--staff-bg:#FAFBFF;--staff-line:#5c4033;--note-col:#c73b2c;color-scheme:light;}
+:root[data-theme="dark"]{--staff-bg:#1e1b2e;--staff-line:#a89880;--note-col:#e85151;color-scheme:dark;}
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);
@@ -90,21 +91,38 @@ body{display:flex;align-items:center;justify-content:center;}
 .psw-btn:hover{border-color:var(--accent);color:var(--text);}
 
 .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;
-  display:flex;align-items:flex-end;justify-content:center;backdrop-filter:blur(3px);}
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);
+  padding:16px max(16px,env(safe-area-inset-left,0px));}
 .overlay[hidden]{display:none!important;}
-.sheet{background:var(--surface);width:100%;max-width:420px;border-radius:24px 24px 0 0;
-  padding:24px 20px max(28px,env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:18px;
-  max-height:85vh;overflow-y:auto;}
-.sh-title{font-size:18px;font-weight:700;text-align:center;}
-.srow{display:flex;flex-direction:column;gap:10px;}
-.slbl{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);}
-.opts{display:flex;flex-wrap:wrap;gap:8px;}
+.sheet{background:var(--surface);width:100%;max-width:400px;border-radius:20px;
+  padding:20px 16px 20px;display:flex;flex-direction:column;gap:6px;
+  max-height:90vh;overflow-y:auto;}
+.sh-title{font-size:18px;font-weight:700;text-align:center;margin-bottom:4px;}
+/* accordion rows */
+.srow{border:1.5px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card);}
+.srow-hd{display:flex;align-items:center;justify-content:space-between;
+  padding:13px 16px;cursor:pointer;gap:8px;user-select:none;}
+.srow-hd:hover{background:rgba(123,104,238,.08);}
+.slbl{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);flex-shrink:0;}
+.srow-val{font-size:13px;font-weight:600;color:var(--text);flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.srow-arrow{font-size:11px;color:var(--muted);transition:transform .2s;flex-shrink:0;}
+.srow.open .srow-arrow{transform:rotate(180deg);}
+.opts{display:flex;flex-wrap:wrap;gap:8px;overflow:hidden;
+  max-height:0;padding:0 14px;transition:max-height .25s ease,padding .25s ease;}
+.srow.open .opts{max-height:420px;padding:6px 14px 14px;}
+.color-row{display:none;flex-direction:column;gap:8px;padding-top:12px;width:100%;border-top:1px solid var(--border);margin-top:4px;}
+html.is-light .color-row{display:flex;}
+.swatches{display:flex;gap:10px;}
+.swatch{width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;
+  border:3px solid transparent;outline:none;transition:transform .15s,border-color .15s;}
+.swatch:hover{transform:scale(1.12);}
+.swatch.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent);}
 .opt{padding:7px 14px;border-radius:9px;border:1.5px solid var(--border);
-  background:var(--card);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:.12s;}
+  background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:.12s;}
 .opt:hover{border-color:var(--accent);}
 .opt.on{background:var(--accent);border-color:var(--accent);color:#fff;}
 .close-btn{padding:14px;background:var(--accent);color:#fff;border:none;
-  border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;width:100%;}
+  border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-top:4px;}
 </style>
 
 <div class="app">
@@ -133,8 +151,12 @@ body{display:flex;align-items:center;justify-content:center;}
   <div class="sheet">
     <div class="sh-title">Paramètres</div>
 
-    <div class="srow">
-      <div class="slbl">Armure / Altérations</div>
+    <div class="srow" id="acc-ks">
+      <div class="srow-hd" onclick="toggleAcc('acc-ks')">
+        <span class="slbl">Armure</span>
+        <span class="srow-val" id="val-ks">Do majeur</span>
+        <span class="srow-arrow">▼</span>
+      </div>
       <div class="opts" id="ks-opts">
         <button class="opt on" data-ks="C">Do majeur</button>
         <button class="opt" data-ks="G">Sol (1♯)</button>
@@ -149,8 +171,12 @@ body{display:flex;align-items:center;justify-content:center;}
       </div>
     </div>
 
-    <div class="srow">
-      <div class="slbl">Clef</div>
+    <div class="srow" id="acc-clef">
+      <div class="srow-hd" onclick="toggleAcc('acc-clef')">
+        <span class="slbl">Clef</span>
+        <span class="srow-val" id="val-clef">Grand staff</span>
+        <span class="srow-arrow">▼</span>
+      </div>
       <div class="opts" id="clef-opts">
         <button class="opt on" data-clef="both">Grand staff (Sol + Fa)</button>
         <button class="opt" data-clef="treble">Clef de Sol seulement</button>
@@ -158,8 +184,12 @@ body{display:flex;align-items:center;justify-content:center;}
       </div>
     </div>
 
-    <div class="srow">
-      <div class="slbl">Étendue des notes</div>
+    <div class="srow" id="acc-range">
+      <div class="srow-hd" onclick="toggleAcc('acc-range')">
+        <span class="slbl">Étendue</span>
+        <span class="srow-val" id="val-range">+1 ligne</span>
+        <span class="srow-arrow">▼</span>
+      </div>
       <div class="opts" id="range-opts">
         <button class="opt" data-range="0">Dans la portée</button>
         <button class="opt on" data-range="1">+1 ligne</button>
@@ -167,6 +197,29 @@ body{display:flex;align-items:center;justify-content:center;}
         <button class="opt" data-range="3">+3 lignes</button>
         <button class="opt" data-range="4">+4 lignes</button>
         <button class="opt" data-range="5">+5 lignes</button>
+      </div>
+    </div>
+
+    <div class="srow" id="acc-theme">
+      <div class="srow-hd" onclick="toggleAcc('acc-theme')">
+        <span class="slbl">Thème</span>
+        <span class="srow-val" id="val-theme">Auto</span>
+        <span class="srow-arrow">▼</span>
+      </div>
+      <div class="opts" id="theme-opts">
+        <button class="opt" data-theme-val="light">☀ Clair</button>
+        <button class="opt" data-theme-val="dark">☽ Sombre</button>
+        <button class="opt on" data-theme-val="auto">⬡ Auto</button>
+        <div class="color-row">
+          <span class="slbl" style="font-size:10px">Couleur de fond</span>
+          <div class="swatches" id="bg-swatches">
+            <button class="swatch on" data-bg="#CAEAFF" style="background:#CAEAFF" aria-label="Bleu ciel"></button>
+            <button class="swatch"    data-bg="#C2D7C2" style="background:#C2D7C2" aria-label="Vert pâle"></button>
+            <button class="swatch"    data-bg="#EBD7AE" style="background:#EBD7AE" aria-label="Beige"></button>
+            <button class="swatch"    data-bg="#FF9A9A" style="background:#FF9A9A" aria-label="Rose"></button>
+            <button class="swatch"    data-bg="#9AAEFF" style="background:#9AAEFF" aria-label="Lavande"></button>
+          </div>
+        </div>
       </div>
     </div>
 
@@ -276,7 +329,33 @@ const KS_B_SHARP = [10, 25, 5, 20, 35, 15, 30];
 const KS_B_FLAT  = [30, 15, 35, 20, 5, 25, 10];
 
 /* app state */
-const app = {ks:'C', clef:'both', range:1, mode:'sol', cor:0, tot:0, cur:null, locked:false};
+const app = {ks:'C', clef:'both', range:1, mode:'sol', cor:0, tot:0, cur:null, locked:false, bgColor:'#CAEAFF'};
+
+const BG_PALETTES = {
+  '#CAEAFF': {card:'#dff4ff', border:'#a8d8f5'},
+  '#C2D7C2': {card:'#d8ebd8', border:'#9ec49e'},
+  '#EBD7AE': {card:'#f5e9cc', border:'#d4b878'},
+  '#FF9A9A': {card:'#ffc8c8', border:'#e87878'},
+  '#9AAEFF': {card:'#c0d0ff', border:'#7a9ae8'},
+};
+
+function applyBgColor() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+    (!document.documentElement.hasAttribute('data-theme') && window.matchMedia('(prefers-color-scheme:dark)').matches);
+  const root = document.documentElement;
+  if (!isDark) {
+    const pal = BG_PALETTES[app.bgColor] || {};
+    root.style.setProperty('--bg', app.bgColor);
+    if (pal.card)   root.style.setProperty('--card', pal.card);
+    if (pal.border) root.style.setProperty('--border', pal.border);
+    root.classList.add('is-light');
+  } else {
+    root.style.removeProperty('--bg');
+    root.style.removeProperty('--card');
+    root.style.removeProperty('--border');
+    root.classList.remove('is-light');
+  }
+}
 
 /* ─── SVG staff renderer ─── */
 function render() {
@@ -305,8 +384,9 @@ function render() {
   const leftM = clefW + accW;
   const noteX = leftM + (W - leftM) / 2;
 
-  const SC = '#5c4033'; // staff color (brown on cream bg)
-  const NC = '#c73b2c'; // note color (red)
+  const cs = getComputedStyle(document.documentElement);
+  const SC = cs.getPropertyValue('--staff-line').trim() || '#5c4033';
+  const NC = cs.getPropertyValue('--note-col').trim()   || '#c73b2c';
 
   /* Ledger lines needed for a note at yOff from a staff top line.
      Lines are at offsets 0,10,20,30,40 and extend beyond at 50,60… / -10,-20,… */
@@ -511,23 +591,57 @@ function closeSettings() {
   pick();
 }
 
+/* ─── accordion ─── */
+function toggleAcc(id) {
+  const el = document.getElementById(id);
+  const isOpen = el.classList.contains('open');
+  document.querySelectorAll('.srow.open').forEach(s => s.classList.remove('open'));
+  if (!isOpen) el.classList.add('open');
+}
+
 /* ─── settings wiring ─── */
 document.querySelectorAll('[data-ks]').forEach(b => b.addEventListener('click', () => {
   app.ks = b.dataset.ks;
   document.querySelectorAll('[data-ks]').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
+  document.getElementById('val-ks').textContent = b.textContent;
 }));
 document.querySelectorAll('[data-clef]').forEach(b => b.addEventListener('click', () => {
   app.clef = b.dataset.clef;
   document.querySelectorAll('[data-clef]').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
+  const labels = {both:'Grand staff', treble:'Clef de Sol', bass:'Clef de Fa'};
+  document.getElementById('val-clef').textContent = labels[app.clef] || b.textContent;
 }));
 document.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click', () => {
   app.range = +b.dataset.range;
   document.querySelectorAll('[data-range]').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
+  document.getElementById('val-range').textContent = b.textContent;
 }));
 
+document.querySelectorAll('[data-theme-val]').forEach(b => b.addEventListener('click', () => {
+  const val = b.dataset.themeVal;
+  document.querySelectorAll('[data-theme-val]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  if (val === 'auto') document.documentElement.removeAttribute('data-theme');
+  else               document.documentElement.setAttribute('data-theme', val);
+  const labels = {light:'Clair', dark:'Sombre', auto:'Auto'};
+  document.getElementById('val-theme').textContent = labels[val] || val;
+  applyBgColor();
+  render();
+}));
+
+document.querySelectorAll('.swatch').forEach(b => b.addEventListener('click', () => {
+  app.bgColor = b.dataset.bg;
+  document.querySelectorAll('.swatch').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  applyBgColor();
+}));
+
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', applyBgColor);
+
 buildSol();
+applyBgColor();
 pick();
 </script>
