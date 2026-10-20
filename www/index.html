@@ -1,0 +1,698 @@
+<title>Solfège Trainer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+
+<style>
+:root {
+  --bg:#0e0e1a;--surface:#19192d;--card:#23233c;
+  --accent:#7b68ee;--ok:#1ec995;--err:#e85151;
+  --text:#ece9f9;--muted:#6f6d88;--border:#2d2d4a;
+  --staff-bg:#1e1b2e;--staff-line:#a89880;--note-col:#e85151;
+  color-scheme:dark;
+}
+@media(prefers-color-scheme:light){
+  :root:not([data-theme="dark"]){
+    --bg:#9AD7FF;--surface:#fff;--card:#e8f5ff;
+    --text:#1a1730;--muted:#4a6a88;--border:#bde0f8;
+    --staff-bg:#FAFBFF;--staff-line:#5c4033;--note-col:#c73b2c;
+    color-scheme:light;
+  }
+}
+:root[data-theme="light"]{--bg:#9AD7FF;--surface:#fff;--card:#e8f5ff;--text:#1a1730;--muted:#4a6a88;--border:#bde0f8;--staff-bg:#FAFBFF;--staff-line:#5c4033;--note-col:#c73b2c;color-scheme:light;}
+:root[data-theme="dark"]{--staff-bg:#1e1b2e;--staff-line:#a89880;--note-col:#e85151;color-scheme:dark;}
+
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  -webkit-tap-highlight-color:transparent;user-select:none;overscroll-behavior:none;}
+body{display:flex;align-items:center;justify-content:center;}
+
+.app{width:100%;max-width:420px;height:100%;display:flex;flex-direction:column;
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:12px;gap:8px;}
+
+.hd{display:flex;align-items:center;justify-content:space-between;flex-shrink:0;}
+.app-name{font-size:13px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.6px;}
+.score{font-size:18px;font-weight:700;font-variant-numeric:tabular-nums;}
+.sc{color:var(--ok);}.sep{color:var(--muted);margin:0 2px;}
+.st{color:var(--muted);font-size:13px;}
+.gear{background:none;border:1px solid var(--border);color:var(--muted);width:34px;height:34px;
+  border-radius:9px;cursor:pointer;font-size:16px;display:flex;align-items:center;justify-content:center;transition:.15s;}
+.gear:hover{border-color:var(--accent);color:var(--accent);}
+
+.ks-chip{display:inline-flex;align-items:center;gap:6px;padding:5px 14px;
+  border-radius:20px;background:var(--surface);border:1px solid var(--border);
+  font-size:13px;font-weight:600;color:var(--muted);align-self:center;flex-shrink:0;}
+.ks-chip .kn{color:var(--text);}
+
+.staff-wrap{flex:1;background:var(--staff-bg);border-radius:18px;
+  display:flex;align-items:center;justify-content:center;overflow:hidden;
+  min-height:170px;max-height:280px;box-shadow:0 4px 20px rgba(0,0,0,.4);}
+#vf-out{width:100%;padding:8px 4px;}
+#vf-out svg{display:block;width:100%;height:auto;}
+
+.fb{height:36px;display:flex;align-items:center;justify-content:center;
+  font-size:17px;font-weight:700;flex-shrink:0;transition:opacity .2s;}
+.fb:empty{opacity:0;}
+.fb-ok{color:var(--ok);}.fb-err{color:var(--err);}
+
+.iz{flex-shrink:0;display:flex;flex-direction:column;gap:8px;}
+
+.sol-grid{display:grid;grid-template-columns:repeat(4,1fr);grid-template-rows:repeat(2,1fr);gap:8px;}
+.sol-btn{background:var(--card);color:var(--text);border:1.5px solid var(--border);
+  border-radius:14px;height:62px;font-size:17px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:transform .1s,background .12s,border-color .12s;}
+.sol-btn:active{transform:scale(.91);}
+.sol-btn.ok{background:var(--ok);border-color:var(--ok);color:#fff;}
+.sol-btn.err{background:var(--err);border-color:var(--err);color:#fff;}
+.sw-cell{background:var(--surface);border:1.5px solid var(--border);border-radius:14px;
+  height:62px;cursor:pointer;display:flex;align-items:center;justify-content:center;
+  flex-direction:column;gap:2px;transition:border-color .15s;}
+.sw-cell:hover{border-color:var(--accent);}
+.sw-icon{font-size:22px;line-height:1;}
+.sw-lbl{font-size:10px;color:var(--muted);font-weight:700;letter-spacing:.4px;}
+
+.piano-row{display:flex;flex-direction:column;gap:8px;}
+.piano-wrap{position:relative;width:100%;height:110px;border-radius:12px;overflow:hidden;background:#1a1a1a;}
+.pkey{position:absolute;cursor:pointer;border-radius:0 0 8px 8px;
+  display:flex;align-items:flex-end;justify-content:center;padding-bottom:7px;
+  transition:transform .08s,background .1s;}
+.pkey:active{transform:scaleY(.94);transform-origin:top;}
+.pkey.white{background:#f8f3e6;border:1px solid #bbb;border-top:none;bottom:0;color:#555;font-size:10px;font-weight:700;}
+.pkey.black{background:#111;z-index:2;top:0;color:#777;font-size:8px;font-weight:700;}
+.pkey.ok{background:var(--ok)!important;color:#fff!important;}
+.pkey.err{background:var(--err)!important;color:#fff!important;}
+.psw-row{display:flex;justify-content:center;}
+.psw-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;
+  padding:8px 22px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;gap:6px;transition:.15s;}
+.psw-btn:hover{border-color:var(--accent);color:var(--text);}
+
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:100;
+  display:flex;align-items:center;justify-content:center;backdrop-filter:blur(3px);
+  padding:16px max(16px,env(safe-area-inset-left,0px));}
+.overlay[hidden]{display:none!important;}
+.sheet{background:var(--surface);width:100%;max-width:400px;border-radius:20px;
+  padding:20px 16px 20px;display:flex;flex-direction:column;gap:6px;
+  max-height:90vh;overflow-y:auto;}
+.sh-title{font-size:18px;font-weight:700;text-align:center;margin-bottom:4px;}
+/* accordion rows */
+.srow{border:1.5px solid var(--border);border-radius:14px;overflow:hidden;background:var(--card);}
+.srow-hd{display:flex;align-items:center;justify-content:space-between;
+  padding:13px 16px;cursor:pointer;gap:8px;user-select:none;}
+.srow-hd:hover{background:rgba(123,104,238,.08);}
+.slbl{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.9px;color:var(--muted);flex-shrink:0;}
+.srow-val{font-size:13px;font-weight:600;color:var(--text);flex:1;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.srow-arrow{font-size:11px;color:var(--muted);transition:transform .2s;flex-shrink:0;}
+.srow.open .srow-arrow{transform:rotate(180deg);}
+.opts{display:flex;flex-wrap:wrap;gap:8px;overflow:hidden;
+  max-height:0;padding:0 14px;transition:max-height .25s ease,padding .25s ease;}
+.srow.open .opts{max-height:420px;padding:6px 14px 14px;}
+.color-row{display:none;flex-direction:column;gap:8px;padding-top:12px;width:100%;border-top:1px solid var(--border);margin-top:4px;}
+html.is-light .color-row{display:flex;}
+.swatches{display:flex;gap:10px;}
+.swatch{width:34px;height:34px;border-radius:50%;cursor:pointer;flex-shrink:0;
+  border:3px solid transparent;outline:none;transition:transform .15s,border-color .15s;}
+.swatch:hover{transform:scale(1.12);}
+.swatch.on{border-color:var(--accent);box-shadow:0 0 0 2px var(--surface),0 0 0 4px var(--accent);}
+.opt{padding:7px 14px;border-radius:9px;border:1.5px solid var(--border);
+  background:var(--surface);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:.12s;}
+.opt:hover{border-color:var(--accent);}
+.opt.on{background:var(--accent);border-color:var(--accent);color:#fff;}
+.close-btn{padding:14px;background:var(--accent);color:#fff;border:none;
+  border-radius:14px;font-size:16px;font-weight:700;cursor:pointer;width:100%;margin-top:4px;}
+</style>
+
+<div class="app">
+  <div class="hd">
+    <span class="app-name">🎵 Solfège</span>
+    <div class="score"><span class="sc" id="sc">0</span><span class="sep">/</span><span class="st" id="st">0</span></div>
+    <button class="gear" onclick="openSettings()" aria-label="Paramètres">⚙</button>
+  </div>
+  <div class="ks-chip"><span>🎼</span><span class="kn" id="kn">Do majeur</span></div>
+  <div class="staff-wrap"><div id="vf-out"></div></div>
+  <div class="fb" id="fb" role="status" aria-live="polite"></div>
+  <div class="iz">
+    <div id="zone-sol"><div class="sol-grid" id="sol-grid"></div></div>
+    <div id="zone-piano" hidden>
+      <div class="piano-row">
+        <div class="piano-wrap" id="piano"></div>
+        <div class="psw-row">
+          <button class="psw-btn" onclick="switchMode()"><span>🎵</span>Solfège</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="sheet">
+    <div class="sh-title">Paramètres</div>
+
+    <div class="srow" id="acc-ks">
+      <div class="srow-hd" onclick="toggleAcc('acc-ks')">
+        <span class="slbl">Armure</span>
+        <span class="srow-val" id="val-ks">Do majeur</span>
+        <span class="srow-arrow">▼</span>
+      </div>
+      <div class="opts" id="ks-opts">
+        <button class="opt on" data-ks="C">Do majeur</button>
+        <button class="opt" data-ks="G">Sol (1♯)</button>
+        <button class="opt" data-ks="D">Ré (2♯)</button>
+        <button class="opt" data-ks="A">La (3♯)</button>
+        <button class="opt" data-ks="E">Mi (4♯)</button>
+        <button class="opt" data-ks="F">Fa (1♭)</button>
+        <button class="opt" data-ks="Bb">Si♭ (2♭)</button>
+        <button class="opt" data-ks="Eb">Mi♭ (3♭)</button>
+        <button class="opt" data-ks="Ab">La♭ (4♭)</button>
+        <button class="opt" data-ks="rand">Aléatoire ♯♭</button>
+      </div>
+    </div>
+
+    <div class="srow" id="acc-clef">
+      <div class="srow-hd" onclick="toggleAcc('acc-clef')">
+        <span class="slbl">Clef</span>
+        <span class="srow-val" id="val-clef">Grand staff</span>
+        <span class="srow-arrow">▼</span>
+      </div>
+      <div class="opts" id="clef-opts">
+        <button class="opt on" data-clef="both">Grand staff (Sol + Fa)</button>
+        <button class="opt" data-clef="treble">Clef de Sol seulement</button>
+        <button class="opt" data-clef="bass">Clef de Fa seulement</button>
+      </div>
+    </div>
+
+    <div class="srow" id="acc-range">
+      <div class="srow-hd" onclick="toggleAcc('acc-range')">
+        <span class="slbl">Étendue</span>
+        <span class="srow-val" id="val-range">+1 ligne</span>
+        <span class="srow-arrow">▼</span>
+      </div>
+      <div class="opts" id="range-opts">
+        <button class="opt" data-range="0">Dans la portée</button>
+        <button class="opt on" data-range="1">+1 ligne</button>
+        <button class="opt" data-range="2">+2 lignes</button>
+        <button class="opt" data-range="3">+3 lignes</button>
+        <button class="opt" data-range="4">+4 lignes</button>
+        <button class="opt" data-range="5">+5 lignes</button>
+      </div>
+    </div>
+
+    <div class="srow" id="acc-theme">
+      <div class="srow-hd" onclick="toggleAcc('acc-theme')">
+        <span class="slbl">Thème</span>
+        <span class="srow-val" id="val-theme">Auto</span>
+        <span class="srow-arrow">▼</span>
+      </div>
+      <div class="opts" id="theme-opts">
+        <button class="opt" data-theme-val="light">☀ Clair</button>
+        <button class="opt" data-theme-val="dark">☽ Sombre</button>
+        <button class="opt on" data-theme-val="auto">⬡ Auto</button>
+        <div class="color-row">
+          <span class="slbl" style="font-size:10px">Couleur de fond</span>
+          <div class="swatches" id="bg-swatches">
+            <button class="swatch on" data-bg="#CAEAFF" style="background:#CAEAFF" aria-label="Bleu ciel"></button>
+            <button class="swatch"    data-bg="#C2D7C2" style="background:#C2D7C2" aria-label="Vert pâle"></button>
+            <button class="swatch"    data-bg="#EBD7AE" style="background:#EBD7AE" aria-label="Beige"></button>
+            <button class="swatch"    data-bg="#FF9A9A" style="background:#FF9A9A" aria-label="Rose"></button>
+            <button class="swatch"    data-bg="#9AAEFF" style="background:#9AAEFF" aria-label="Lavande"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button class="close-btn" onclick="closeSettings()">Fermer</button>
+  </div>
+</div>
+
+<script>
+/* ── persistence ── */
+function saveState() {
+  try {
+    localStorage.setItem('solfege_v1', JSON.stringify({
+      ks: app.ks, clef: app.clef, range: app.range,
+      theme: document.documentElement.getAttribute('data-theme') || 'auto',
+      bgColor: app.bgColor, mode: app.mode,
+      cor: app.cor, tot: app.tot
+    }));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem('solfege_v1') || '{}');
+    if (s.ks && KS_META[s.ks])       app.ks      = s.ks;
+    if (s.clef)                        app.clef    = s.clef;
+    if (s.range !== undefined)         app.range   = +s.range;
+    if (s.bgColor && BG_PALETTES[s.bgColor]) app.bgColor = s.bgColor;
+    if (s.mode)                        app.mode    = s.mode;
+    if (s.cor)                         app.cor     = +s.cor;
+    if (s.tot)                         app.tot     = +s.tot;
+    if (s.theme && s.theme !== 'auto') document.documentElement.setAttribute('data-theme', s.theme);
+  } catch(e) {}
+}
+
+function restoreUI() {
+  const theme = document.documentElement.getAttribute('data-theme') || 'auto';
+  document.querySelectorAll('[data-ks]').forEach(b => b.classList.toggle('on', b.dataset.ks === app.ks));
+  document.querySelectorAll('[data-clef]').forEach(b => b.classList.toggle('on', b.dataset.clef === app.clef));
+  document.querySelectorAll('[data-range]').forEach(b => b.classList.toggle('on', +b.dataset.range === app.range));
+  document.querySelectorAll('[data-theme-val]').forEach(b => b.classList.toggle('on', b.dataset.themeVal === theme));
+  document.querySelectorAll('.swatch').forEach(b => b.classList.toggle('on', b.dataset.bg === app.bgColor));
+  document.getElementById('val-ks').textContent    = KS_META[app.ks]?.name || 'Do majeur';
+  document.getElementById('val-clef').textContent  = {both:'Grand staff', treble:'Clef de Sol', bass:'Clef de Fa'}[app.clef] || '';
+  document.getElementById('val-range').textContent = ['+0','+ 1 ligne','+2 lignes','+3 lignes','+4 lignes','+5 lignes'][app.range] || '';
+  document.getElementById('val-theme').textContent = {light:'Clair', dark:'Sombre', auto:'Auto'}[theme] || 'Auto';
+  document.getElementById('kn').textContent        = KS_META[app.ks]?.name || '';
+  document.getElementById('sc').textContent        = app.cor;
+  document.getElementById('st').textContent        = app.tot;
+}
+
+/* ── constants ── */
+const LTRS = ['C','D','E','F','G','A','B'];
+const SOL  = ['Do','Ré','Mi','Fa','Sol','La','Si'];
+
+/* Full note pools with yOff = offset in px from staff top line (STEP=10).
+   Staff lines are at yOff 0,10,20,30,40. Spaces between them at 5,15,25,35.
+   Below staff: spaces at 45,55,65; ledger lines at 50,60,70.
+   Above staff: spaces at -5,-15; ledger lines at -10,-20,-30. */
+/* Treble clef: top line = F5 (yOff=0). Higher pitch → more negative yOff.
+   Staff lines at 0,10,20,30,40. Spaces at 5,15,25,35.
+   Above staff: spaces at -5,-15,-25; ledger lines at -10,-20,-30.
+   Below staff: spaces at 45,55,65;  ledger lines at 50,60,70. */
+const TP_FULL = [
+  // above staff ── 5th ledger area
+  {n:'B',k:'B6',yOff:-50},{n:'A',k:'A6',yOff:-45},
+  // above staff ── 4th ledger
+  {n:'G',k:'G6',yOff:-40},{n:'F',k:'F6',yOff:-35},
+  // above staff ── 3rd ledger
+  {n:'E',k:'E6',yOff:-30},{n:'D',k:'D6',yOff:-25},
+  // above staff ── 2nd ledger
+  {n:'C',k:'C6',yOff:-20},{n:'B',k:'B5',yOff:-15},
+  // above staff ── 1st ledger
+  {n:'A',k:'A5',yOff:-10},{n:'G',k:'G5',yOff:-5},
+  // within staff (F5 top → E4 bottom)
+  {n:'F',k:'F5',yOff:0},{n:'E',k:'E5',yOff:5},
+  {n:'D',k:'D5',yOff:10},{n:'C',k:'C5',yOff:15},
+  {n:'B',k:'B4',yOff:20},{n:'A',k:'A4',yOff:25},
+  {n:'G',k:'G4',yOff:30},{n:'F',k:'F4',yOff:35},
+  {n:'E',k:'E4',yOff:40},
+  // below staff ── 1st ledger
+  {n:'D',k:'D4',yOff:45},{n:'C',k:'C4',yOff:50},
+  // below staff ── 2nd ledger
+  {n:'B',k:'B3',yOff:55},{n:'A',k:'A3',yOff:60},
+  // below staff ── 3rd ledger
+  {n:'G',k:'G3',yOff:65},{n:'F',k:'F3',yOff:70},
+  // below staff ── 4th ledger
+  {n:'E',k:'E3',yOff:75},{n:'D',k:'D3',yOff:80},
+  // below staff ── 5th ledger
+  {n:'C',k:'C3',yOff:85},{n:'B',k:'B2',yOff:90},
+];
+
+/* Bass clef: top line = A3 (yOff=0). Higher pitch → more negative yOff.
+   Staff lines at 0,10,20,30,40. Spaces at 5,15,25,35.
+   Above staff: spaces at -5,-15,-25; ledger lines at -10,-20,-30.
+   Below staff: spaces at 45,55,65;  ledger lines at 50,60,70. */
+const BP_FULL = [
+  // above staff ── 5th ledger area
+  {n:'D',k:'D5',yOff:-50},{n:'C',k:'C5',yOff:-45},
+  // above staff ── 4th ledger
+  {n:'B',k:'B4',yOff:-40},{n:'A',k:'A4',yOff:-35},
+  // above staff ── 3rd ledger
+  {n:'G',k:'G4',yOff:-30},{n:'F',k:'F4',yOff:-25},
+  // above staff ── 2nd ledger
+  {n:'E',k:'E4',yOff:-20},{n:'D',k:'D4',yOff:-15},
+  // above staff ── 1st ledger (middle C at -10)
+  {n:'C',k:'C4',yOff:-10},{n:'B',k:'B3',yOff:-5},
+  // within staff (A3 top → G2 bottom)
+  {n:'A',k:'A3',yOff:0},{n:'G',k:'G3',yOff:5},
+  {n:'F',k:'F3',yOff:10},{n:'E',k:'E3',yOff:15},
+  {n:'D',k:'D3',yOff:20},{n:'C',k:'C3',yOff:25},
+  {n:'B',k:'B2',yOff:30},{n:'A',k:'A2',yOff:35},
+  {n:'G',k:'G2',yOff:40},
+  // below staff ── 1st ledger
+  {n:'F',k:'F2',yOff:45},{n:'E',k:'E2',yOff:50},
+  // below staff ── 2nd ledger
+  {n:'D',k:'D2',yOff:55},{n:'C',k:'C2',yOff:60},
+  // below staff ── 3rd ledger
+  {n:'B',k:'B1',yOff:65},{n:'A',k:'A1',yOff:70},
+  // below staff ── 4th ledger
+  {n:'G',k:'G1',yOff:75},{n:'F',k:'F1',yOff:80},
+  // below staff ── 5th ledger
+  {n:'E',k:'E1',yOff:85},{n:'D',k:'D1',yOff:90},
+];
+
+/* Range: max yOff offset from staff (absolute value).
+   yOff ∈ [0,40] = strictly in staff = range 0.
+   Each "ligne de léger" adds ±10 to the limit. */
+const RANGE_LIMIT = [40, 50, 60, 70, 80, 90]; // range 0/1/2/3/4/5 → max yOff below staff
+
+/* key signature metadata */
+const KS_META = {
+  C:   {name:'Do majeur',              sharps:0,flats:0},
+  G:   {name:'Sol (1♯)',               sharps:1,flats:0},
+  D:   {name:'Ré (2♯)',                sharps:2,flats:0},
+  A:   {name:'La (3♯)',                sharps:3,flats:0},
+  E:   {name:'Mi (4♯)',                sharps:4,flats:0},
+  F:   {name:'Fa (1♭)',                sharps:0,flats:1},
+  Bb:  {name:'Si♭ (2♭)',              sharps:0,flats:2},
+  Eb:  {name:'Mi♭ (3♭)',              sharps:0,flats:3},
+  Ab:  {name:'La♭ (4♭)',              sharps:0,flats:4},
+  rand:{name:'Altérations aléatoires', sharps:0,flats:0},
+};
+
+/* Key signature y-positions (offset from staffTop).
+   Sharps order: F C G D A E B   |   Flats order: B E A D G C F */
+const KS_T_SHARP = [0, 15, -5, 10, 25, 5, 20];
+const KS_T_FLAT  = [20, 5, 25, 10, 30, 15, 35];
+const KS_B_SHARP = [10, 25, 5, 20, 35, 15, 30];
+const KS_B_FLAT  = [30, 15, 35, 20, 5, 25, 10];
+
+/* app state */
+const app = {ks:'C', clef:'both', range:1, mode:'sol', cor:0, tot:0, cur:null, locked:false, bgColor:'#CAEAFF'};
+
+const BG_PALETTES = {
+  '#CAEAFF': {card:'#dff4ff', border:'#a8d8f5'},
+  '#C2D7C2': {card:'#d8ebd8', border:'#9ec49e'},
+  '#EBD7AE': {card:'#f5e9cc', border:'#d4b878'},
+  '#FF9A9A': {card:'#ffc8c8', border:'#e87878'},
+  '#9AAEFF': {card:'#c0d0ff', border:'#7a9ae8'},
+};
+
+function applyBgColor() {
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark' ||
+    (!document.documentElement.hasAttribute('data-theme') && window.matchMedia('(prefers-color-scheme:dark)').matches);
+  const root = document.documentElement;
+  if (!isDark) {
+    const pal = BG_PALETTES[app.bgColor] || {};
+    root.style.setProperty('--bg', app.bgColor);
+    if (pal.card)   root.style.setProperty('--card', pal.card);
+    if (pal.border) root.style.setProperty('--border', pal.border);
+    root.classList.add('is-light');
+  } else {
+    root.style.removeProperty('--bg');
+    root.style.removeProperty('--card');
+    root.style.removeProperty('--border');
+    root.classList.remove('is-light');
+  }
+}
+
+/* ─── SVG staff renderer ─── */
+function render() {
+  const out = document.getElementById('vf-out');
+  if (!app.cur) { out.innerHTML = ''; return; }
+
+  const W    = Math.max((out.parentElement.clientWidth || 340) - 8, 260);
+  const S    = 10; // px per staff step
+  const both = app.clef === 'both';
+
+  /* Compute extra vertical space needed for ledger lines outside staff.
+     Find the worst yOff among visible notes for current session. */
+  const cur       = app.cur;
+  const curYOff   = cur.yOff;
+  const topPad    = curYOff < 0 ? Math.max(20, -curYOff + 10) : 20;
+  const botPad    = curYOff > 40 ? Math.max(14, curYOff - 40 + 10) : 14;
+
+  const T1 = topPad;                       // treble staff top line y
+  const T2 = both ? T1 + 80 + topPad + botPad : T1; // bass staff top line y
+  const H  = both ? T2 + 40 + botPad : T1 + 40 + botPad;
+
+  const ks   = KS_META[app.ks] || KS_META.C;
+  const nAcc = Math.max(ks.sharps, ks.flats);
+  const clefW = 36;
+  const accW  = nAcc > 0 ? nAcc * 13 + 4 : 0;
+  const leftM = clefW + accW;
+  const noteX = leftM + (W - leftM) / 2;
+
+  const cs = getComputedStyle(document.documentElement);
+  const SC = cs.getPropertyValue('--staff-line').trim() || '#5c4033';
+  const NC = cs.getPropertyValue('--note-col').trim()   || '#c73b2c';
+
+  /* Ledger lines needed for a note at yOff from a staff top line.
+     Lines are at offsets 0,10,20,30,40 and extend beyond at 50,60… / -10,-20,… */
+  function ledgerLines(yOff) {
+    const out = [];
+    if (yOff > 40) for (let y = 50; y <= yOff; y += 10) out.push(y);
+    if (yOff < 0)  for (let y = -10; y >= yOff; y -= 10) out.push(y);
+    return out;
+  }
+
+  function drawLines(top) {
+    return Array.from({length:5}, (_,i) =>
+      `<line x1="4" y1="${top+i*S}" x2="${W-4}" y2="${top+i*S}" stroke="${SC}" stroke-width="1.3"/>`
+    ).join('');
+  }
+
+  function drawTrebleClef(top) {
+    return `<text x="6" y="${top+56}" font-family="'Times New Roman',Georgia,serif" font-size="78" fill="${SC}" style="font-style:italic">𝄞</text>`;
+  }
+
+  function drawBassClef(top) {
+    return `<text x="8" y="${top+22}" font-family="'Times New Roman',Georgia,serif" font-size="38" fill="${SC}">𝄢</text>`;
+  }
+
+  function drawKeySig(top, clef) {
+    const posArr = clef === 'treble'
+      ? (ks.sharps > 0 ? KS_T_SHARP : KS_T_FLAT)
+      : (ks.sharps > 0 ? KS_B_SHARP : KS_B_FLAT);
+    const ch  = ks.sharps > 0 ? '♯' : '♭';
+    const cnt = Math.max(ks.sharps, ks.flats);
+    return Array.from({length:cnt}, (_,i) => {
+      const x = clefW + i*13 + 6;
+      const y = top + posArr[i] + 8;
+      return `<text x="${x}" y="${y}" font-family="'Times New Roman',Georgia,serif" font-size="15" fill="${SC}" text-anchor="middle">${ch}</text>`;
+    }).join('');
+  }
+
+  function drawNote(staffTop) {
+    const yOff = cur.yOff;
+    const ny   = staffTop + yOff;
+    const nx   = noteX;
+    let s = '';
+
+    /* ledger lines */
+    ledgerLines(yOff).forEach(lo => {
+      const ly = staffTop + lo;
+      s += `<line x1="${nx-14}" y1="${ly}" x2="${nx+14}" y2="${ly}" stroke="${SC}" stroke-width="1.3"/>`;
+    });
+
+    /* accidental (random mode) */
+    if (cur.acc) {
+      const ch = cur.acc === '#' ? '♯' : '♭';
+      s += `<text x="${nx-17}" y="${ny+6}" font-family="'Times New Roman',Georgia,serif" font-size="19" fill="${NC}" text-anchor="middle">${ch}</text>`;
+    }
+
+    /* note head */
+    s += `<ellipse cx="${nx}" cy="${ny}" rx="7.8" ry="5.4" fill="${NC}" transform="rotate(-18,${nx},${ny})"/>`;
+
+    /* stem: up if note is on or below middle line */
+    const stemUp = yOff >= 20;
+    const sx = stemUp ? nx + 6.8 : nx - 6.8;
+    s += `<line x1="${sx}" y1="${ny}" x2="${sx}" y2="${stemUp ? ny-33 : ny+33}" stroke="${NC}" stroke-width="1.9"/>`;
+
+    return s;
+  }
+
+  let svg = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg" style="display:block;width:100%;height:auto;">`;
+
+  if (both || app.clef === 'treble') {
+    svg += drawLines(T1) + drawTrebleClef(T1) + drawKeySig(T1, 'treble');
+    if (cur.clef === 'treble') svg += drawNote(T1);
+  }
+  if (both || app.clef === 'bass') {
+    svg += drawLines(T2) + drawBassClef(T2) + drawKeySig(T2, 'bass');
+    if (cur.clef === 'bass') svg += drawNote(T2);
+  }
+
+  /* bracket for grand staff */
+  if (both) {
+    svg += `<line x1="4" y1="${T1}" x2="4" y2="${T2+40}" stroke="${SC}" stroke-width="2.8"/>`;
+  }
+
+  svg += '</svg>';
+  out.innerHTML = svg;
+}
+
+/* ─── game logic ─── */
+function buildPool() {
+  const limit = RANGE_LIMIT[app.range] ?? 40;
+  /* For grand staff: treble gets its notes, bass gets its notes.
+     For single clef: only that clef's pool. */
+  const tNotes = TP_FULL.filter(n => n.yOff >= 0 - (limit - 40) && n.yOff <= limit)
+    .map(n => ({...n, clef:'treble'}));
+  const bNotes = BP_FULL.filter(n => n.yOff >= 0 - (limit - 40) && n.yOff <= limit)
+    .map(n => ({...n, clef:'bass'}));
+
+  if (app.clef === 'treble') return tNotes;
+  if (app.clef === 'bass')   return bNotes;
+  return [...tNotes, ...bNotes];
+}
+
+function pick() {
+  const pool = buildPool();
+  if (!pool.length) return;
+  const note = {...pool[Math.floor(Math.random() * pool.length)]};
+  if (app.ks === 'rand') {
+    const r = Math.random();
+    note.acc = r < .22 ? '#' : r < .44 ? 'b' : null;
+  } else {
+    note.acc = null;
+  }
+  app.cur = note;
+  app.locked = false;
+  render();
+  document.getElementById('fb').textContent = '';
+  document.getElementById('fb').className = 'fb';
+  document.querySelectorAll('.sol-btn,.pkey').forEach(b => b.classList.remove('ok','err'));
+}
+
+function answer(n) {
+  if (app.locked) return;
+  app.locked = true; app.tot++;
+  const ok = app.cur.n === n;
+  if (ok) app.cor++;
+  document.getElementById('sc').textContent = app.cor;
+  document.getElementById('st').textContent = app.tot;
+  const fb = document.getElementById('fb');
+  if (ok) { fb.textContent = '✓  Bravo !';      fb.className = 'fb fb-ok'; }
+  else    { fb.textContent = '✗  C\'était ' + SOL[LTRS.indexOf(app.cur.n)]; fb.className = 'fb fb-err'; }
+  if (app.mode === 'sol') {
+    document.querySelectorAll('.sol-btn').forEach(b => {
+      if (b.dataset.note === n)          b.classList.add(ok ? 'ok' : 'err');
+      if (!ok && b.dataset.note === app.cur.n) b.classList.add('ok');
+    });
+  } else {
+    document.querySelectorAll('.pkey').forEach(k => {
+      if (k.dataset.note === n)               k.classList.add(ok ? 'ok' : 'err');
+      if (!ok && k.dataset.note === app.cur.n) k.classList.add('ok');
+    });
+  }
+  saveState();
+  setTimeout(pick, 950);
+}
+
+function buildSol() {
+  const g = document.getElementById('sol-grid');
+  g.innerHTML = '';
+  LTRS.forEach((n, i) => {
+    const b = document.createElement('button');
+    b.className = 'sol-btn'; b.textContent = SOL[i]; b.dataset.note = n;
+    b.addEventListener('click', () => answer(n));
+    g.appendChild(b);
+  });
+  const sw = document.createElement('div');
+  sw.className = 'sw-cell';
+  sw.innerHTML = '<span class="sw-icon">🎹</span><span class="sw-lbl">CLAVIER</span>';
+  sw.addEventListener('click', switchMode);
+  g.appendChild(sw);
+}
+
+function buildPiano() {
+  const wrap = document.getElementById('piano');
+  const W = wrap.clientWidth || 360;
+  wrap.innerHTML = '';
+  const WK = ['C','D','E','F','G','A','B','C'];
+  const nw = WK.length, ww = W/nw, bw = ww*.62, wh = 110, bh = 66;
+  const BK = [{n:'C',s:0},{n:'D',s:1},{n:'F',s:3},{n:'G',s:4},{n:'A',s:5}];
+  WK.forEach((note, i) => {
+    const k = document.createElement('div');
+    k.className = 'pkey white';
+    k.style.cssText = `left:${i*ww}px;width:${ww-2}px;height:${wh}px;`;
+    k.dataset.note = note; k.textContent = SOL[LTRS.indexOf(note)];
+    k.addEventListener('click', () => answer(note));
+    wrap.appendChild(k);
+  });
+  BK.forEach(({n, s}) => {
+    const k = document.createElement('div');
+    k.className = 'pkey black';
+    k.style.cssText = `left:${(s+1)*ww - bw/2}px;width:${bw}px;height:${bh}px;`;
+    k.dataset.note = n; k.textContent = '♯';
+    k.addEventListener('click', () => answer(n));
+    wrap.appendChild(k);
+  });
+}
+
+function switchMode() {
+  if (app.mode === 'sol') {
+    app.mode = 'piano';
+    document.getElementById('zone-sol').hidden = true;
+    document.getElementById('zone-piano').hidden = false;
+    buildPiano();
+  } else {
+    app.mode = 'sol';
+    document.getElementById('zone-piano').hidden = true;
+    document.getElementById('zone-sol').hidden = false;
+  }
+  saveState();
+}
+
+function openSettings()  { document.getElementById('overlay').hidden = false; }
+function closeSettings() {
+  document.getElementById('overlay').hidden = true;
+  document.getElementById('kn').textContent = KS_META[app.ks]?.name || '';
+  pick();
+}
+
+/* ─── accordion ─── */
+function toggleAcc(id) {
+  const el = document.getElementById(id);
+  const isOpen = el.classList.contains('open');
+  document.querySelectorAll('.srow.open').forEach(s => s.classList.remove('open'));
+  if (!isOpen) el.classList.add('open');
+}
+
+/* ─── settings wiring ─── */
+document.querySelectorAll('[data-ks]').forEach(b => b.addEventListener('click', () => {
+  app.ks = b.dataset.ks;
+  document.querySelectorAll('[data-ks]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  document.getElementById('val-ks').textContent = b.textContent;
+  saveState();
+}));
+document.querySelectorAll('[data-clef]').forEach(b => b.addEventListener('click', () => {
+  app.clef = b.dataset.clef;
+  document.querySelectorAll('[data-clef]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  const labels = {both:'Grand staff', treble:'Clef de Sol', bass:'Clef de Fa'};
+  document.getElementById('val-clef').textContent = labels[app.clef] || b.textContent;
+  saveState();
+}));
+document.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click', () => {
+  app.range = +b.dataset.range;
+  document.querySelectorAll('[data-range]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  document.getElementById('val-range').textContent = b.textContent;
+  saveState();
+}));
+
+document.querySelectorAll('[data-theme-val]').forEach(b => b.addEventListener('click', () => {
+  const val = b.dataset.themeVal;
+  document.querySelectorAll('[data-theme-val]').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  if (val === 'auto') document.documentElement.removeAttribute('data-theme');
+  else               document.documentElement.setAttribute('data-theme', val);
+  const labels = {light:'Clair', dark:'Sombre', auto:'Auto'};
+  document.getElementById('val-theme').textContent = labels[val] || val;
+  applyBgColor();
+  render();
+  saveState();
+}));
+
+document.querySelectorAll('.swatch').forEach(b => b.addEventListener('click', () => {
+  app.bgColor = b.dataset.bg;
+  document.querySelectorAll('.swatch').forEach(x => x.classList.remove('on'));
+  b.classList.add('on');
+  applyBgColor();
+  saveState();
+}));
+
+window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', applyBgColor);
+
+loadState();
+buildSol();
+if (app.mode === 'piano') switchMode();
+restoreUI();
+applyBgColor();
+pick();
+</script>

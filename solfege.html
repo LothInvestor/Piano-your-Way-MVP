@@ -1,6 +1,5 @@
 <title>Solfège Trainer</title>
 <meta name="claude:viewport-fit-sides" content="cover">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;600;700&display=swap">
 
 <style>
 :root {
@@ -23,7 +22,7 @@
 
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 html,body{height:100%;background:var(--bg);color:var(--text);
-  font-family:'Source Sans 3',system-ui,sans-serif;
+  font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
   -webkit-tap-highlight-color:transparent;user-select:none;overscroll-behavior:none;}
 body{display:flex;align-items:center;justify-content:center;}
 
@@ -228,6 +227,48 @@ html.is-light .color-row{display:flex;}
 </div>
 
 <script>
+/* ── persistence ── */
+function saveState() {
+  try {
+    localStorage.setItem('solfege_v1', JSON.stringify({
+      ks: app.ks, clef: app.clef, range: app.range,
+      theme: document.documentElement.getAttribute('data-theme') || 'auto',
+      bgColor: app.bgColor, mode: app.mode,
+      cor: app.cor, tot: app.tot
+    }));
+  } catch(e) {}
+}
+
+function loadState() {
+  try {
+    const s = JSON.parse(localStorage.getItem('solfege_v1') || '{}');
+    if (s.ks && KS_META[s.ks])       app.ks      = s.ks;
+    if (s.clef)                        app.clef    = s.clef;
+    if (s.range !== undefined)         app.range   = +s.range;
+    if (s.bgColor && BG_PALETTES[s.bgColor]) app.bgColor = s.bgColor;
+    if (s.mode)                        app.mode    = s.mode;
+    if (s.cor)                         app.cor     = +s.cor;
+    if (s.tot)                         app.tot     = +s.tot;
+    if (s.theme && s.theme !== 'auto') document.documentElement.setAttribute('data-theme', s.theme);
+  } catch(e) {}
+}
+
+function restoreUI() {
+  const theme = document.documentElement.getAttribute('data-theme') || 'auto';
+  document.querySelectorAll('[data-ks]').forEach(b => b.classList.toggle('on', b.dataset.ks === app.ks));
+  document.querySelectorAll('[data-clef]').forEach(b => b.classList.toggle('on', b.dataset.clef === app.clef));
+  document.querySelectorAll('[data-range]').forEach(b => b.classList.toggle('on', +b.dataset.range === app.range));
+  document.querySelectorAll('[data-theme-val]').forEach(b => b.classList.toggle('on', b.dataset.themeVal === theme));
+  document.querySelectorAll('.swatch').forEach(b => b.classList.toggle('on', b.dataset.bg === app.bgColor));
+  document.getElementById('val-ks').textContent    = KS_META[app.ks]?.name || 'Do majeur';
+  document.getElementById('val-clef').textContent  = {both:'Grand staff', treble:'Clef de Sol', bass:'Clef de Fa'}[app.clef] || '';
+  document.getElementById('val-range').textContent = ['+0','+ 1 ligne','+2 lignes','+3 lignes','+4 lignes','+5 lignes'][app.range] || '';
+  document.getElementById('val-theme').textContent = {light:'Clair', dark:'Sombre', auto:'Auto'}[theme] || 'Auto';
+  document.getElementById('kn').textContent        = KS_META[app.ks]?.name || '';
+  document.getElementById('sc').textContent        = app.cor;
+  document.getElementById('st').textContent        = app.tot;
+}
+
 /* ── constants ── */
 const LTRS = ['C','D','E','F','G','A','B'];
 const SOL  = ['Do','Ré','Mi','Fa','Sol','La','Si'];
@@ -527,6 +568,7 @@ function answer(n) {
       if (!ok && k.dataset.note === app.cur.n) k.classList.add('ok');
     });
   }
+  saveState();
   setTimeout(pick, 950);
 }
 
@@ -582,6 +624,7 @@ function switchMode() {
     document.getElementById('zone-piano').hidden = true;
     document.getElementById('zone-sol').hidden = false;
   }
+  saveState();
 }
 
 function openSettings()  { document.getElementById('overlay').hidden = false; }
@@ -605,6 +648,7 @@ document.querySelectorAll('[data-ks]').forEach(b => b.addEventListener('click', 
   document.querySelectorAll('[data-ks]').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
   document.getElementById('val-ks').textContent = b.textContent;
+  saveState();
 }));
 document.querySelectorAll('[data-clef]').forEach(b => b.addEventListener('click', () => {
   app.clef = b.dataset.clef;
@@ -612,12 +656,14 @@ document.querySelectorAll('[data-clef]').forEach(b => b.addEventListener('click'
   b.classList.add('on');
   const labels = {both:'Grand staff', treble:'Clef de Sol', bass:'Clef de Fa'};
   document.getElementById('val-clef').textContent = labels[app.clef] || b.textContent;
+  saveState();
 }));
 document.querySelectorAll('[data-range]').forEach(b => b.addEventListener('click', () => {
   app.range = +b.dataset.range;
   document.querySelectorAll('[data-range]').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
   document.getElementById('val-range').textContent = b.textContent;
+  saveState();
 }));
 
 document.querySelectorAll('[data-theme-val]').forEach(b => b.addEventListener('click', () => {
@@ -630,6 +676,7 @@ document.querySelectorAll('[data-theme-val]').forEach(b => b.addEventListener('c
   document.getElementById('val-theme').textContent = labels[val] || val;
   applyBgColor();
   render();
+  saveState();
 }));
 
 document.querySelectorAll('.swatch').forEach(b => b.addEventListener('click', () => {
@@ -637,11 +684,15 @@ document.querySelectorAll('.swatch').forEach(b => b.addEventListener('click', ()
   document.querySelectorAll('.swatch').forEach(x => x.classList.remove('on'));
   b.classList.add('on');
   applyBgColor();
+  saveState();
 }));
 
 window.matchMedia('(prefers-color-scheme:dark)').addEventListener('change', applyBgColor);
 
+loadState();
 buildSol();
+if (app.mode === 'piano') switchMode();
+restoreUI();
 applyBgColor();
 pick();
 </script>
