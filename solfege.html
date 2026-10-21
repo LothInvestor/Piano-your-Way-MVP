@@ -87,8 +87,14 @@ body{display:flex;align-items:center;justify-content:center;}
 .pkey:active{transform:scaleY(.94);transform-origin:top;}
 .pkey.white{background:#f8f3e6;border:1px solid #bbb;border-top:none;bottom:0;color:#555;font-size:10px;font-weight:700;}
 .pkey.black{background:#111;z-index:2;top:0;color:#777;font-size:8px;font-weight:700;}
-.pkey.ok{background:var(--ok)!important;color:#fff!important;}
-.pkey.err{background:var(--err)!important;color:#fff!important;}
+.pkey.white.ok{background:var(--ok)!important;color:#fff!important;}
+.pkey.white.err{background:var(--err)!important;color:#fff!important;}
+.pkey.black.ok{background:var(--ok)!important;color:#fff!important;
+  border:1.5px solid rgba(255,255,255,.55)!important;
+  box-shadow:0 0 14px var(--ok),inset 0 0 6px rgba(255,255,255,.25)!important;}
+.pkey.black.err{background:var(--err)!important;color:#fff!important;
+  border:1.5px solid rgba(255,255,255,.55)!important;
+  box-shadow:0 0 14px var(--err),inset 0 0 6px rgba(255,255,255,.25)!important;}
 .psw-row{display:flex;justify-content:center;}
 .psw-btn{background:var(--surface);border:1.5px solid var(--border);border-radius:20px;
   padding:8px 22px;color:var(--muted);font-size:13px;font-weight:700;cursor:pointer;
@@ -462,11 +468,12 @@ function render() {
     const posArr = clef === 'treble'
       ? (ks.sharps > 0 ? KS_T_SHARP : KS_T_FLAT)
       : (ks.sharps > 0 ? KS_B_SHARP : KS_B_FLAT);
-    const ch  = ks.sharps > 0 ? '♯' : '♭';
-    const cnt = Math.max(ks.sharps, ks.flats);
+    const ch   = ks.sharps > 0 ? '♯' : '♭';
+    const cnt  = Math.max(ks.sharps, ks.flats);
+    const yAdj = ch === '♭' ? 4 : 6; // ♭ belly vs ♯ center alignment with staff line
     return Array.from({length:cnt}, (_,i) => {
       const x = clefW + i*13 + 6;
-      const y = top + posArr[i] + 8;
+      const y = top + posArr[i] + yAdj;
       return `<text x="${x}" y="${y}" font-family="'Times New Roman',Georgia,serif" font-size="15" fill="${SC}" text-anchor="middle">${ch}</text>`;
     }).join('');
   }
@@ -553,25 +560,52 @@ function pick() {
   document.querySelectorAll('.sol-btn,.pkey').forEach(b => b.classList.remove('ok','err'));
 }
 
+/* Maps a flat note to its enharmonic piano key id.
+   C♭→B, F♭→E (white keys); all others map to a black key (sharp of lower note). */
+const FLAT_TO_KEY = {B:'A#',E:'D#',A:'G#',D:'C#',G:'F#',C:'B',F:'E'};
+
+const SHARP_ORDER = ['F','C','G','D','A','E','B'];
+const FLAT_ORDER  = ['B','E','A','D','G','C','F'];
+/* Returns {note: '#'|'b'} for every note altered by the current key signature. */
+function getKsAccidentals(ks) {
+  const meta = KS_META[ks];
+  if (!meta || ks === 'rand' || (meta.sharps === 0 && meta.flats === 0)) return {};
+  const res = {};
+  if (meta.sharps > 0) SHARP_ORDER.slice(0, meta.sharps).forEach(n => res[n] = '#');
+  else                 FLAT_ORDER .slice(0, meta.flats) .forEach(n => res[n] = 'b');
+  return res;
+}
+
+function expectedPianoKey(cur) {
+  /* Explicit accidental (rand mode) takes priority over key signature. */
+  const acc = cur.acc || getKsAccidentals(app.ks)[cur.n] || null;
+  if (!acc) return cur.n;
+  if (acc === '#') return cur.n + '#';
+  return FLAT_TO_KEY[cur.n] || cur.n;
+}
+
 function answer(n) {
   if (app.locked) return;
   app.locked = true; app.tot++;
-  const ok = app.cur.n === n;
+  const correct = (app.mode === 'piano') ? expectedPianoKey(app.cur) : app.cur.n;
+  const ok = correct === n;
   if (ok) app.cor++;
   document.getElementById('sc').textContent = app.cor;
   document.getElementById('st').textContent = app.tot;
   const fb = document.getElementById('fb');
-  if (ok) { fb.textContent = '✓  Bravo !';      fb.className = 'fb fb-ok'; }
-  else    { fb.textContent = '✗  C\'était ' + SOL[LTRS.indexOf(app.cur.n)]; fb.className = 'fb fb-err'; }
+  const effectiveAcc = app.cur.acc || getKsAccidentals(app.ks)[app.cur.n] || null;
+  const accStr = effectiveAcc === '#' ? '♯' : effectiveAcc === 'b' ? '♭' : '';
+  if (ok) { fb.textContent = '✓  Bravo !'; fb.className = 'fb fb-ok'; }
+  else    { fb.textContent = '✗  C\'était ' + SOL[LTRS.indexOf(app.cur.n)] + accStr; fb.className = 'fb fb-err'; }
   if (app.mode === 'sol') {
     document.querySelectorAll('.sol-btn').forEach(b => {
-      if (b.dataset.note === n)          b.classList.add(ok ? 'ok' : 'err');
+      if (b.dataset.note === n)                b.classList.add(ok ? 'ok' : 'err');
       if (!ok && b.dataset.note === app.cur.n) b.classList.add('ok');
     });
   } else {
     document.querySelectorAll('.pkey').forEach(k => {
       if (k.dataset.note === n)               k.classList.add(ok ? 'ok' : 'err');
-      if (!ok && k.dataset.note === app.cur.n) k.classList.add('ok');
+      if (!ok && k.dataset.note === correct)  k.classList.add('ok');
     });
   }
   saveState();
@@ -613,8 +647,8 @@ function buildPiano() {
     const k = document.createElement('div');
     k.className = 'pkey black';
     k.style.cssText = `left:${(s+1)*ww - bw/2}px;width:${bw}px;height:${bh}px;`;
-    k.dataset.note = n; k.textContent = '♯';
-    k.addEventListener('click', () => answer(n));
+    k.dataset.note = n + '#'; k.textContent = '♯';
+    k.addEventListener('click', () => answer(n + '#'));
     wrap.appendChild(k);
   });
 }
